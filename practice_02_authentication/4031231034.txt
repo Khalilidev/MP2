@@ -1,0 +1,142 @@
+<?php
+
+const USERS = [
+    [
+        "id" => 1,
+        "first_name" => "sajad",
+        "last_name" => "rahmani",
+        "student_id" => "3981231152",
+        "password" => "12345"
+    ],
+    [
+        "id" => 2,
+        "first_name" => "ali",
+        "last_name" => "ahmadi",
+        "student_id" => "4012345678",
+        "password" => "54321"
+    ],
+    [
+        "id" => 3,
+        "first_name" => "mohammad",
+        "last_name" => "karimi",
+        "student_id" => "3998765432",
+        "password" => "11223"
+    ],
+    [
+        "id" => 4,
+        "first_name" => "sara",
+        "last_name" => "hosseini",
+        "student_id" => "4001122334",
+        "password" => "99887"
+    ],
+    [
+        "id" => 5,
+        "first_name" => "nima",
+        "last_name" => "rezaei",
+        "student_id" => "3974455667",
+        "password" => "24680"
+    ],
+    [
+        "id" => 6,
+        "first_name" => "fatemeh",
+        "last_name" => "soltani",
+        "student_id" => "4029988776",
+        "password" => "13579"
+    ]
+];
+
+class Cipher
+ {
+    private static $cipher_algo = "AES-256-CBC";
+
+    public static function encrypt($message, $key)
+    {
+        $iv_length = openssl_cipher_iv_length(self::$cipher_algo);
+        $iv = openssl_random_pseudo_bytes($iv_length);
+
+        $encrypted_raw = openssl_encrypt($message, self::$cipher_algo, $key, OPENSSL_RAW_DATA, $iv);
+
+        return base64_encode($iv . $encrypted_raw);
+    }
+
+    public static function decrypt($encrypted_message, $key)
+    {
+        $c = base64_decode($encrypted_message);
+        $iv_length = openssl_cipher_iv_length(self::$cipher_algo);
+
+        $iv = substr($c, 0, $iv_length);
+        $encrypted_raw = substr($c, $iv_length);
+
+        return openssl_decrypt($encrypted_raw, self::$cipher_algo, $key, OPENSSL_RAW_DATA, $iv);
+    }
+}
+
+$my_key = "secret_key_4031231034";
+
+function Login($username, $password)
+{
+    global $my_key;
+
+    $foundUser = null;
+    $usernameFound = false;
+    $passwordFound = false;
+
+    foreach (USERS as $user)
+        {
+            if ($user["student_id"] == $username)
+            {
+                $foundUser = $user;
+                $usernameFound = true;
+            }
+
+            if ($user["password"] == $password) $passwordFound = true;
+    }
+
+    $errors = [];
+
+    if ($usernameFound == false) $errors[] = "NotFoundUserName";
+
+    if ($usernameFound == true)
+    {
+        if ($foundUser["password"] != $password) $errors[] = "NotFoundPassword";
+    }
+    else
+    {
+        if ($passwordFound == false) $errors[] = "NotFoundPassword";
+    }
+
+    if (count($errors) > 0)
+    {
+        return [
+            "status" => 400,
+            "data" => null,
+            "res" => [
+                "message" => "کاربری یافت نشد",
+                "errors" => $errors
+            ]
+        ];
+    }
+
+    $tokenText = time() . "," . $foundUser["id"] . "," . $foundUser["student_id"];
+    $token = Cipher::encrypt($tokenText, $my_key);
+
+    $data = [
+        "full_name" => $foundUser["first_name"] . " " . $foundUser["last_name"],
+        "student_id" => $foundUser["student_id"],
+        "token" => $token
+    ];
+
+    return [
+        "status" => 200,
+        "data" => $data,
+        "res" => [
+            "message" => "ورود کاربر با موفقیت انجام شد.",
+            "errors" => []
+        ]
+    ];
+}
+
+$result = Login("3981231152", "12345");
+print_r($result);
+
+?>
